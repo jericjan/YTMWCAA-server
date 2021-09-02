@@ -1,4 +1,4 @@
-from flask import Flask,request,send_file,flash,redirect,url_for
+from flask import Flask,request,send_file,flash,redirect,url_for,Response
 from flask_cors import CORS
 from threading import Thread
 import subprocess
@@ -38,7 +38,16 @@ def delete():
       except OSError:
           print("Error while deleting file")
 
-  return 'Deleted: ' + fileList        
+  return 'Deleted: ' + str(fileList)
+
+@app.route('/log')
+def log():
+ with open('log.txt', 'r') as file:
+    data = file.read()
+    fdata = "data: "+data+"\n\n"
+    return Response(fdata, mimetype="text/event-stream")
+    
+
 
 @app.route('/check')
 def check():
@@ -79,12 +88,14 @@ async def json_example():
     
     
     print('Downloading...')
-    coms = ['youtube-dl', '-f','251','-g','--get-filename','-o','%(title)s',url]
+    coms = ['youtube-dl', '-f','251','-g','--get-filename','-o','%(title)s','--force-ipv4',url]
     print(join(coms))
     process = subprocess.Popen(coms, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,universal_newlines=True)
     stdout,stderr = process.communicate()
-    link = stdout.splitlines()[0]
-    title_safe = stdout.splitlines()[1]+"_"+str(random.randint(1000,9999))
+    link = stdout.splitlines()[-2]
+    print(link+"\n"+link+"\n"+link)
+    title_safe = stdout.splitlines()[-1]+"_"+str(random.randint(1000,9999))
+    print(title_safe+"\n"+title_safe+"\n"+title_safe)
     if os.path.exists(title_safe+".mp3"):
         file_path = title_safe+".mp3"
         return_data = io.BytesIO()
@@ -103,8 +114,15 @@ async def json_example():
       process = subprocess.Popen(coms, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,universal_newlines=True)
       for line in process.stdout:
         print(line)
+        with open('log.txt', 'w') as file:
+          f = open("log.txt", "w")
+          f.write(line)
+          f.close()
       #return 'Downloading...'+ ' '+url
-
+      with open('log.txt', 'w') as file:
+        f = open("log.txt", "w")
+        f.write('DONE!')
+        f.close()
       audio = MP3(title_safe+".mp3", ID3=ID3)
       try:
           audio.add_tags()
@@ -164,8 +182,8 @@ def upload_file():
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return 'Done!'
 
-#def run():
- # app.run(host='0.0.0.0',port=8080)
+def run():
+  app.run(host='0.0.0.0',port=8080)
 
 def run_gunicorn():
   coms = ['gunicorn', '--workers','4','--bind','0.0.0.0:5000','wsgi:app']
@@ -175,7 +193,7 @@ def run_gunicorn():
         print(line)
 
 def keep_alive():
-    t = Thread(target=run_gunicorn)
+    t = Thread(target=run)
     t.start()
 
   # gunicorn --workers 4 --bind 0.0.0.0:5000 wsgi:app
