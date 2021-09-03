@@ -1,4 +1,5 @@
-from flask import Flask,request,send_file,flash,redirect,url_for,Response
+from flask import Flask,request,send_file,flash,redirect,url_for,Response,session
+from flask_session import Session
 from flask_cors import CORS
 from threading import Thread
 import subprocess
@@ -11,16 +12,29 @@ from werkzeug.utils import secure_filename
 from mutagen.id3 import ID3,TRCK,TIT2,TALB,TPE1,APIC,TDRC,COMM,TPOS,USLT,error
 from mutagen.mp3 import MP3
 import random
+import string
 import glob
 
 UPLOAD_FOLDER = 'image/'
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
 app = Flask('')
-CORS(app)
+#app.secret_key = "bananaman"
+CORS(app, supports_credentials=True)
+sess = Session()
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['SECRET_KEY'] = "bananaman"
+app.config["SESSION_TYPE"] = "filesystem"
+sess.init_app(app)
 
+app.config.update(SESSION_COOKIE_SAMESITE="None", SESSION_COOKIE_SECURE=True)
+
+
+def random_string():
+  source = string.ascii_letters + string.digits
+  result_str = ''.join((random.choice(source) for i in range(8)))
+  return result_str
 
 global working
 
@@ -30,7 +44,7 @@ def home():
 
 @app.route('/delete')
 def delete():
-  fileList = glob.glob('*.mp3')
+  fileList = glob.glob('*.mp3') + glob.glob('*.txt')
   # Iterate over the list of filepaths & remove each file.
   for filePath in fileList:
       try:
@@ -40,47 +54,49 @@ def delete():
 
   return 'Deleted: ' + str(fileList)
 
-@app.route('/log')
-def log():
- with open('log.txt', 'r') as file:
-    data = file.read()
-    fdata = "data: "+data+"\n\n"
-    return Response(fdata, mimetype="text/event-stream")
+ 
     
 
+@app.route('/go',methods=['GET', 'POST'])
+async def go():
+    
+  session['UserID'] = random_string()
+  session.modified = True
 
-@app.route('/check')
-def check():
+  print(session['UserID'])
+  return "'GO! succeeded"
+
+@app.route('/get',methods=['GET', 'POST'])
+async def get():
   try:
-    working
-  except NameError:
-      return 'I\'m good!'
-  else:    
-    if working == True:
-      return"I'm busy..."
-    elif working == False:
-      return 'I\'m good!'  
-
-@app.before_request
-def before_request_func():
-    working = True
-
-@app.after_request
-def after_request_func(response):
-  working = False
-  return response
+   return session['UserID']
+  except Exception:
+      return 'Couldn\'nt find UserID :('
 
 
-@app.teardown_request
-def teardown_request_func(error=None):
-  working = False
+@app.route('/reset',methods=['GET', 'POST'])
+def reset():
+  try:
+      session.pop('UserID',None)
+  except Exception:
+      pass
+  return 'reset succeeded'
 
-
+@app.route('/log',methods=['GET', 'POST'])
+async def log():
+ try: 
+  with open('log_'+session['UserID']+'.txt', 'r') as file:
+      data = file.read()
+    #  print('logged: '+data)
+     # fdata = "data: "+data+"\n\n"
+      return data
+ except Exception:
+      data = "Bleep bloop..."
+      return data
 
 @app.route('/download',methods=['GET', 'POST'])
 async def json_example():
-    working = True
-    
+    print(session['UserID'])
     url = request.args.get('url')
     author = request.args.get('author')
     title = request.args.get('title')
@@ -94,7 +110,7 @@ async def json_example():
     stdout,stderr = process.communicate()
     link = stdout.splitlines()[-2]
     print(link+"\n"+link+"\n"+link)
-    title_safe = stdout.splitlines()[-1]+"_"+str(random.randint(1000,9999))
+    title_safe = stdout.splitlines()[-1]+"_"+str(session['UserID'])
     print(title_safe+"\n"+title_safe+"\n"+title_safe)
     if os.path.exists(title_safe+".mp3"):
         file_path = title_safe+".mp3"
@@ -114,15 +130,15 @@ async def json_example():
       process = subprocess.Popen(coms, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,universal_newlines=True)
       for line in process.stdout:
         print(line)
-        with open('log.txt', 'w') as file:
-          f = open("log.txt", "w")
+        with open('log_'+session['UserID']+'.txt', 'w') as file:
+          f = open('log_'+session['UserID']+'.txt', "w")
           f.write(line)
           f.close()
       #return 'Downloading...'+ ' '+url
-      with open('log.txt', 'w') as file:
-        f = open("log.txt", "w")
-        f.write('DONE!')
-        f.close()
+  #    with open('log_'+session['UserID']+'.txt', 'w') as file:
+  ##      f = open('log_'+session['UserID']+'.txt', "w")
+   #     f.write('Bleep bloop...')
+  #      f.close()
       audio = MP3(title_safe+".mp3", ID3=ID3)
       try:
           audio.add_tags()
@@ -136,7 +152,7 @@ async def json_example():
       
       #response.headers.add('Access-Control-Allow-Origin', '*')
       file = request.files['file']
-      img_name = 'img_'+str(random.randint(1000,9999))
+      img_name = 'img_'+str(session['UserID'])
       file.save(os.path.join(app.config['UPLOAD_FOLDER'], img_name+'.png'))
 
       
@@ -159,9 +175,11 @@ async def json_example():
       # (after writing, cursor will be at last byte, so move it to start)
       return_data.seek(0)
       os.remove(file_path)
+      os.remove('log_'+session['UserID']+'.txt')
       response = send_file(return_data,mimetype='image/png', attachment_filename=title_safe+".mp3")
       
       return response
+
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -183,6 +201,7 @@ def upload_file():
             return 'Done!'
 
 def run():
+
   app.run(host='0.0.0.0',port=8080)
 
 def run_gunicorn():
