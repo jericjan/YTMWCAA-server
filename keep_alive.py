@@ -14,6 +14,7 @@ from mutagen.mp3 import MP3
 import random
 import string
 import glob
+import datetime
 
 UPLOAD_FOLDER = 'image/'
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
@@ -86,13 +87,43 @@ def reset():
 async def log():
  try: 
   with open('log_'+session['UserID']+'.txt', 'r') as file:
-      data = file.read()
+      #if file.startswith('size=    '):
+        data0 = file.read().split('time=')[1].split(' ')[0]
+        print(data0)
+     # else:
+     #   data0 = '0'  
+     #   print(data0)
+    #    data00 = data0.split('time=')[1].split(' ')[0]
+    #    print(data00)
+    #  else:
+    #    pass  
+
+  with open('duration_'+session['UserID']+'.txt', 'r') as file:
+      data1 = file.read()    
+   #   print(data1)
     #  print('logged: '+data)
      # fdata = "data: "+data+"\n\n"
-      return data
+ # print(data00+" / "+data1)   
+  try:
+    ct = datetime.datetime.strptime(data0,"%H:%M:%S.%f")
+    tt = datetime.datetime.strptime(data1.strip(),"%H:%M:%S.%f")
+    delta_ct = datetime.timedelta(hours=ct.hour, minutes=ct.minute, seconds=ct.second,microseconds=ct.microsecond)
+    delta_tt = datetime.timedelta(hours=tt.hour, minutes=tt.minute, seconds=tt.second,microseconds=tt.microsecond)
+    ff = tt-ct
+    perc=round((delta_ct / delta_tt)*100,1)
+
+    percent_time = " ("+str(perc)+"%)"
+    print(percent_time)
+  except Exception as e:
+    print(e)
+  print(data0+" / "+data1)  
+  return Response("data: "+data0+" / "+data1+percent_time+"\n\n", mimetype="text/event-stream")
  except Exception:
-      data = "Bleep bloop..."
-      return data
+      data = "Beep boop..."
+      return  Response("data: "+data+"\n\n", mimetype="text/event-stream")
+
+
+
 
 @app.route('/download',methods=['GET', 'POST'])
 async def json_example():
@@ -129,11 +160,17 @@ async def json_example():
       coms = ['ffmpeg', '-i',  link, '-codec:a', 'libmp3lame', '-q:a', '0', title_safe+".mp3"]
       process = subprocess.Popen(coms, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,universal_newlines=True)
       for line in process.stdout:
-        print(line)
-        with open('log_'+session['UserID']+'.txt', 'w') as file:
-          f = open('log_'+session['UserID']+'.txt', "w")
-          f.write(line)
-          f.close()
+       # print(line)
+        if line.startswith('  Duration: '):
+          with open('duration_'+session['UserID']+'.txt', 'w') as file:
+            f = open('duration_'+session['UserID']+'.txt', "w")
+            f.write(line.split('Duration:')[1].split(',')[0])
+            f.close()  
+        else:  
+          with open('log_'+session['UserID']+'.txt', 'w') as file:
+            f = open('log_'+session['UserID']+'.txt', "w")
+            f.write(line)
+            f.close()
       #return 'Downloading...'+ ' '+url
   #    with open('log_'+session['UserID']+'.txt', 'w') as file:
   ##      f = open('log_'+session['UserID']+'.txt', "w")
