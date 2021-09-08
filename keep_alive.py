@@ -214,7 +214,7 @@ async def json_example():
       os.remove(file_path)
       os.remove('log_'+session['UserID']+'.txt')
       response = send_file(return_data,mimetype='image/png', attachment_filename=title_safe+".mp3")
-      
+      os.remove('duration_'+session['UserID']+'.txt')
       return response
 
 
