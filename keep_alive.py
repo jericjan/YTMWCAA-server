@@ -119,7 +119,7 @@ async def log():
   print(data0+" / "+data1)  
   return Response("data: "+data0+" / "+data1+percent_time+"\n\n", mimetype="text/event-stream")
  except Exception as e:
-      data = "Beep boop..."+str(e)
+      data = "Beep boop..."
       return  Response("data: "+data+"\n\n", mimetype="text/event-stream")
 
 
