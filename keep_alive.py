@@ -15,6 +15,7 @@ import random
 import string
 import glob
 import datetime
+import uuid
 
 UPLOAD_FOLDER = 'image/'
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
@@ -74,6 +75,9 @@ async def get():
   except Exception:
       return 'Couldn\'nt find UserID :('
 
+@app.route('/get_uuid',methods=['GET', 'POST'])
+async def get_uuid():
+  return str(uuid.uuid4())
 
 @app.route('/reset',methods=['GET', 'POST'])
 def reset():
@@ -85,8 +89,9 @@ def reset():
 
 @app.route('/log',methods=['GET', 'POST'])
 async def log():
+ uuid = request.args.get('pogid') #uuid gets blocked by ublock lmao 
  try: 
-  with open('log_'+session['UserID']+'.txt', 'r') as file:
+  with open('log_'+str(uuid)+'.txt', 'r') as file:
       #if file.startswith('size=    '):
         data0 = file.read().split('time=')[1].split(' ')[0]
         print(data0)
@@ -98,7 +103,7 @@ async def log():
     #  else:
     #    pass  
 
-  with open('duration_'+session['UserID']+'.txt', 'r') as file:
+  with open('duration_'+str(uuid)+'.txt', 'r') as file:
       data1 = file.read()    
    #   print(data1)
     #  print('logged: '+data)
@@ -127,7 +132,9 @@ async def log():
 
 @app.route('/download',methods=['GET', 'POST'])
 async def json_example():
-    print(session['UserID'])
+    
+    uuid = request.args.get('uuid')
+    print(uuid)
     url = request.args.get('url')
     author = request.args.get('author')
     title = request.args.get('title')
@@ -141,7 +148,7 @@ async def json_example():
     stdout,stderr = process.communicate()
     link = stdout.splitlines()[-2]
     print(link+"\n"+link+"\n"+link)
-    title_safe = stdout.splitlines()[-1]+"_"+str(session['UserID'])
+    title_safe = stdout.splitlines()[-1]+"_"+str(uuid)
     print(title_safe+"\n"+title_safe+"\n"+title_safe)
     if os.path.exists(title_safe+".mp3"):
         file_path = title_safe+".mp3"
@@ -162,13 +169,13 @@ async def json_example():
       for line in process.stdout:
        # print(line)
         if line.startswith('  Duration: '):
-          with open('duration_'+session['UserID']+'.txt', 'w') as file:
-            f = open('duration_'+session['UserID']+'.txt', "w")
+          with open('duration_'+str(uuid)+'.txt', 'w') as file:
+            f = open('duration_'+str(uuid)+'.txt', "w")
             f.write(line.split('Duration:')[1].split(',')[0])
             f.close()  
         else:  
-          with open('log_'+session['UserID']+'.txt', 'w') as file:
-            f = open('log_'+session['UserID']+'.txt', "w")
+          with open('log_'+str(uuid)+'.txt', 'w') as file:
+            f = open('log_'+str(uuid)+'.txt', "w")
             f.write(line)
             f.close()
       #return 'Downloading...'+ ' '+url
@@ -189,7 +196,7 @@ async def json_example():
       
       #response.headers.add('Access-Control-Allow-Origin', '*')
       file = request.files['file']
-      img_name = 'img_'+str(session['UserID'])
+      img_name = 'img_'+str(uuid)
       file.save(os.path.join(app.config['UPLOAD_FOLDER'], img_name+'.png'))
 
       
@@ -212,9 +219,9 @@ async def json_example():
       # (after writing, cursor will be at last byte, so move it to start)
       return_data.seek(0)
       os.remove(file_path)
-      os.remove('log_'+session['UserID']+'.txt')
+      os.remove('log_'+str(uuid)+'.txt')
       response = send_file(return_data,mimetype='image/png', attachment_filename=title_safe+".mp3")
-      os.remove('duration_'+session['UserID']+'.txt')
+      os.remove('duration_'+str(uuid)+'.txt')
       return response
 
 
