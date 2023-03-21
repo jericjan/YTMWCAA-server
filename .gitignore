@@ -1,0 +1,4 @@
+flask_session/
+duration_*.txt
+log_*.txt
+__pycache__/

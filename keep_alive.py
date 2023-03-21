@@ -16,6 +16,7 @@ import string
 import glob
 import datetime
 import uuid
+import aiohttp
 
 UPLOAD_FOLDER = 'image/'
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
@@ -142,13 +143,14 @@ async def json_example():
     
     
     print('Downloading...')
-    coms = ['youtube-dl', '-f','251','-g','--get-filename','-o','%(title)s','--force-ipv4',url]
+    coms = ['yt-dlp', '-f','251','-g','--get-filename','-o','%(title)s','--force-ipv4','--no-warning', url]
     print(join(coms))
     process = subprocess.Popen(coms, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,universal_newlines=True)
     stdout,stderr = process.communicate()
-    link = stdout.splitlines()[-2]
-    print(link+"\n"+link+"\n"+link)
-    title_safe = stdout.splitlines()[-1]+"_"+str(uuid)
+    link = stdout.splitlines()[0]
+    print("stdout",stdout)
+    print("1. "+link+"\n"+link+"\n"+link)
+    title_safe = stdout.splitlines()[1]+"_"+str(uuid)
     print(title_safe+"\n"+title_safe+"\n"+title_safe)
     if os.path.exists(title_safe+".mp3"):
         file_path = title_safe+".mp3"
@@ -244,6 +246,54 @@ def upload_file():
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return 'Done!'
 
+@app.get('/update-yt-dlp')
+async def update_ytdlp():
+    # attempts = request.args.get('attempts') #uuid gets blocked by ublock lmao 
+    def respond(msg):
+      return Response(f"data: {msg}", mimetype="text/event-stream")
+
+    queue = []
+
+    async def stuff():
+      url = 'https://api.github.com/repos/yt-dlp/yt-dlp/releases'
+      async with aiohttp.ClientSession() as session:
+          async with session.get(url) as response:
+              json = await response.json()
+              latest_ver = json[0]['tag_name'].strip()
+  
+      def get_current_ver():
+        coms = ['yt-dlp', '--version']
+        process = subprocess.Popen(coms, stdout=subprocess.PIPE,                 stderr=subprocess.STDOUT,universal_newlines=True, encoding='utf-8')
+        stdout,stderr = process.communicate()  
+        return stdout.strip()
+  
+      current_ver = get_current_ver()
+      info = f"Current ver. is {current_ver} and latest ver. is {latest_ver}"    
+    
+      if current_ver == latest_ver:      
+        queue.append(f"{info} - Versions match! Doing nothing")
+      else:
+        queue.append(f"{info} - Versions do not match! Updating")
+       
+        coms = ['poetry', 'add', f'yt-dlp=={latest_ver}']
+        process = subprocess.Popen(coms, stdout=subprocess.PIPE,                 stderr=subprocess.STDOUT,universal_newlines=True, encoding='utf-8')
+        stdout,stderr = process.communicate()      
+        queue.append(f"Updated to {get_current_ver()} !")
+      queue.append("END")      
+  
+
+    def stream():        
+        t = Thread(target=asyncio.run, args=(stuff(),))
+        t.start()
+        while True:
+            if len(queue) != 0:
+              msg = queue.pop(0)
+              msg = f"data: {msg}\n\n"
+              yield msg
+  
+
+    return Response(stream(), mimetype='text/event-stream')
+  
 def run():
 
   app.run(host='0.0.0.0',port=8080)
