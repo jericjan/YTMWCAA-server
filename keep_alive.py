@@ -222,7 +222,7 @@ async def json_example():
       return_data.seek(0)
       os.remove(file_path)
       os.remove('log_'+str(uuid)+'.txt')
-      response = send_file(return_data,mimetype='image/png', attachment_filename=title_safe+".mp3")
+      response = send_file(return_data,mimetype='image/png', download_name=title_safe+".mp3")
       os.remove('duration_'+str(uuid)+'.txt')
       return response
 
