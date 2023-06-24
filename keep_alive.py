@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import datetime
 import glob
 import io
@@ -9,13 +8,13 @@ import string
 import subprocess
 import uuid
 from pathlib import Path
-from shlex import join, quote
+from shlex import join
 from threading import Thread
 
 import aiohttp
-from flask import Flask, Response, flash, redirect, request, send_file, session, url_for
+from flask import Flask, Response, request, send_file, session
 from flask_cors import CORS
-from mutagen.id3 import APIC, COMM, ID3, TALB, TDRC, TIT2, TPE1, TPOS, TRCK, USLT, error
+from mutagen.id3 import APIC, ID3, TALB, TIT2, TPE1, error
 from mutagen.mp3 import MP3
 from werkzeug.utils import secure_filename
 
@@ -107,7 +106,7 @@ async def log():
             print(data0)
 
         with open("duration_" + str(uuid) + ".txt", "r") as file:
-            data1 = file.read(
+            data1 = file.read()
         try:
             ct = datetime.datetime.strptime(data0, "%H:%M:%S.%f")
             tt = datetime.datetime.strptime(data1.strip(), "%H:%M:%S.%f")
@@ -122,8 +121,7 @@ async def log():
                 minutes=tt.minute,
                 seconds=tt.second,
                 microseconds=tt.microsecond,
-            )
-            ff = tt - ct
+            )            
             perc = round((delta_ct / delta_tt) * 100, 1)
 
             percent_time = " (" + str(perc) + "%)"
@@ -222,7 +220,7 @@ async def json_example():
         except error:
             pass
         audio.tags.add(TIT2(encoding=3, text=title))
-        audio.tags.add(TALB(encoding=3, text=author + " - " + title))
+        audio.tags.add(TALB(encoding=3, text=album))
         audio.tags.add(TPE1(encoding=3, text=author))
         file = request.files["file"]
         img_name = "img_" + str(uuid)
