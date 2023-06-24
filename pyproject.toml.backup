@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "python-template"
+name = "repl_python3_yt2mp3-albumart"
 version = "0.1.0"
 description = ""
 authors = ["Your Name <you@example.com>"]
@@ -14,13 +14,8 @@ asgiref = "^3.4.1"
 Flask-Session = "^0.4.0"
 yt-dlp = "2023.03.04"
 aiohttp = "^3.8.4"
-isort = "^5.12.0"
-black = "^23.3.0"
 
 [tool.poetry.dev-dependencies]
-debugpy = "^1.6.2"
-replit-python-lsp-server = {extras = ["yapf", "rope", "pyflakes"], version = "^1.5.9"}
-urllib3 = "1.26.15"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

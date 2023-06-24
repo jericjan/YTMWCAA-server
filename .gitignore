@@ -3,3 +3,4 @@ duration_*.txt
 log_*.txt
 __pycache__/
 .cache/
+venv/
