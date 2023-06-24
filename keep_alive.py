@@ -25,7 +25,6 @@ UPLOAD_FOLDER = "image/"
 ALLOWED_EXTENSIONS = {"txt", "pdf", "png", "jpg", "jpeg", "gif"}
 
 app = Flask("")
-# app.secret_key = "bananaman"
 CORS(app, supports_credentials=True)
 sess = Session()
 
@@ -104,23 +103,11 @@ async def log():
         if not Path("duration_" + str(uuid) + ".txt").exists():
             raise Exception("Duration file don't exist")
         with open("log_" + str(uuid) + ".txt", "r") as file:
-            # if file.startswith('size=    '):
             data0 = file.read().split("time=")[1].split(" ")[0]
             print(data0)
-        # else:
-        #   data0 = '0'
-        #   print(data0)
-        #    data00 = data0.split('time=')[1].split(' ')[0]
-        #    print(data00)
-        #  else:
-        #    pass
 
         with open("duration_" + str(uuid) + ".txt", "r") as file:
-            data1 = file.read()
-        #   print(data1)
-        #  print('logged: '+data)
-        # fdata = "data: "+data+"\n\n"
-        # print(data00+" / "+data1)
+            data1 = file.read(
         try:
             ct = datetime.datetime.strptime(data0, "%H:%M:%S.%f")
             tt = datetime.datetime.strptime(data1.strip(), "%H:%M:%S.%f")
@@ -229,11 +216,6 @@ async def json_example():
                     f = open("log_" + str(uuid) + ".txt", "w")
                     f.write(line)
                     f.close()
-        # return 'Downloading...'+ ' '+url
-        #    with open('log_'+session['UserID']+'.txt', 'w') as file:
-        ##      f = open('log_'+session['UserID']+'.txt', "w")
-        #     f.write('Bleep bloop...')
-        #      f.close()
         audio = MP3(title_safe + ".mp3", ID3=ID3)
         try:
             audio.add_tags()
@@ -242,8 +224,6 @@ async def json_example():
         audio.tags.add(TIT2(encoding=3, text=title))
         audio.tags.add(TALB(encoding=3, text=author + " - " + title))
         audio.tags.add(TPE1(encoding=3, text=author))
-
-        # response.headers.add('Access-Control-Allow-Origin', '*')
         file = request.files["file"]
         img_name = "img_" + str(uuid)
         file.save(os.path.join(app.config["UPLOAD_FOLDER"], img_name + ".png"))
@@ -253,9 +233,6 @@ async def json_example():
         # if user does not select file, browser also
         # submit an empty part without filename
 
-        #   if file and allowed_file(file.filename):
-        #    filename = secure_filename(file.filename)
-        #     file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         audio.tags.add(
             APIC(
                 mime="image/png",
@@ -303,7 +280,6 @@ def upload_file():
 
 @app.get("/update-yt-dlp")
 async def update_ytdlp():
-    # attempts = request.args.get('attempts') #uuid gets blocked by ublock lmao
     def respond(msg):
         return Response(f"data: {msg}", mimetype="text/event-stream")
 
