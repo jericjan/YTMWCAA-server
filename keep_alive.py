@@ -214,6 +214,8 @@ async def json_example():
                     f = open("log_" + str(uuid) + ".txt", "w")
                     f.write(line)
                     f.close()
+
+        print(f"title_safe is:\n{title_safe}")
         audio = MP3(title_safe + ".mp3", ID3=ID3)
         try:
             audio.add_tags()
