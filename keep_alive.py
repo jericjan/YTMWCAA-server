@@ -19,9 +19,6 @@ from mutagen.mp3 import MP3
 from werkzeug.utils import secure_filename
 
 from flask_session import Session
-
-from queue import Queue
-
 from info_classes import InfoContainer
 
 info_container = InfoContainer()
@@ -115,51 +112,44 @@ async def log():
             minutes=tt.minute,
             seconds=tt.second,
             microseconds=tt.microsecond,
-        )            
+        )
         perc = round((delta_ct / delta_tt) * 100, 1)
-  
-        percent_time = " (" + str(perc) + "%)"     
+
+        percent_time = " (" + str(perc) + "%)"
         return percent_time
-  
+
     uuid = request.args.get("pogid")  # uuid gets blocked by ublock lmao
 
-
     def stuff():
-      try:
-          log = info_container.get_log(uuid)
-          duration = info_container.get_duration(uuid)
-          if log == "":
-              raise Exception("Log file don't exist")
-          if duration == "":
-              raise Exception("Duration file don't exist")
-          # with open("log_" + str(uuid) + ".txt", "r") as file:
-          #     data0 = file.read().split("time=")[1].split(" ")[0]
-          #     print(data0)
-  
-          # with open("duration_" + str(uuid) + ".txt", "r") as file:
-          #     data1 = file.read()
-          try:
-              percent_time = calc_percent(log, duration)
-              print(percent_time)
-          except Exception as e:
-              print(e)
-          print(log + " / " + duration)
-          return log + " / " + duration + percent_time
-      except Exception as e:
-          data = "Beep boop..."          
-          return data
+        try:
+            log = info_container.get_log(uuid)
+            duration = info_container.get_duration(uuid)
+            if log == "":
+                raise Exception("Log file don't exist")
+            if duration == "":
+                raise Exception("Duration file don't exist")
+
+            try:
+                percent_time = calc_percent(log, duration)
+                print(percent_time)
+            except Exception as e:
+                print(e)
+            print(log + " / " + duration)
+            return log + " / " + duration + percent_time
+        except Exception as e:
+            return "Beep boop..."
 
     def stream():
         prev_msg = ""
         while True:
             msg = stuff()
             if msg != prev_msg:
-              prev_msg = msg
-              msg = f"data: {msg}\n\n"          
-              yield msg
+                prev_msg = msg
+                msg = f"data: {msg}\n\n"
+                yield msg
 
     return Response(stream(), mimetype="text/event-stream")
-      
+
 
 @app.route("/download", methods=["GET", "POST"])
 async def json_example():
@@ -229,19 +219,11 @@ async def json_example():
             if line.startswith("  Duration: "):
                 duration = line.split("Duration:")[1].split(",")[0]
                 info_container.set_duration(uuid, duration)
-                # with open("duration_" + str(uuid) + ".txt", "w") as file:
-                #     f = open("duration_" + str(uuid) + ".txt", "w")
-                #     f.write(line.split("Duration:")[1].split(",")[0])
-                #     f.close()
-              
+
             elif line.startswith("size="):
                 log = line.split("time=")[1].split(" ")[0]
                 info_container.set_log(uuid, log)
 
-                # with open("log_" + str(uuid) + ".txt", "w") as file:
-                #     f = open("log_" + str(uuid) + ".txt", "w")
-                #     f.write(line)
-                #     f.close()
         info_container.delete_item(uuid)
         print(f"title_safe is:\n{title_safe}")
         audio = MP3(title_safe + ".mp3", ID3=ID3)
