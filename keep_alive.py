@@ -6,13 +6,15 @@ import os
 import random
 import string
 import subprocess
+import threading
+import time
 import uuid
 from pathlib import Path
 from shlex import join
 from threading import Thread
 
 import aiohttp
-from flask import Flask, Response, request, send_file, session
+from flask import Flask, Response, render_template, request, send_file, session
 from flask_cors import CORS
 from mutagen.id3 import APIC, ID3, TALB, TIT2, TPE1, error
 from mutagen.mp3 import MP3
@@ -84,6 +86,7 @@ async def get():
 
 @app.route("/get_uuid", methods=["GET", "POST"])
 async def get_uuid():
+    set_thread_name('get_uuid')
     return str(uuid.uuid4())
 
 
@@ -98,6 +101,7 @@ def reset():
 
 @app.route("/log", methods=["GET", "POST"])
 async def log():
+    set_thread_name('log')
     def calc_percent(log, duration):
         ct = datetime.datetime.strptime(log, "%H:%M:%S.%f")
         tt = datetime.datetime.strptime(duration.strip(), "%H:%M:%S.%f")
@@ -120,7 +124,8 @@ async def log():
 
     uuid = request.args.get("pogid")  # uuid gets blocked by ublock lmao
 
-    def stuff():
+    def stuff(got_info):
+        set_thread_name('log/stuff')
         try:
             log = info_container.get_log(uuid)
             duration = info_container.get_duration(uuid)
@@ -136,23 +141,30 @@ async def log():
                 print(e)
             print(log + " / " + duration)
             return log + " / " + duration + percent_time
-        except Exception as e:
+        except Exception:
+            if got_info:
+                return "END"
             return "Beep boop..."
 
     def stream():
+        set_thread_name('log/stream')
         prev_msg = ""
-        while True:
-            msg = stuff()
+        got_info = False
+        msg = ""
+        while msg != "END":
+            msg = stuff(got_info)
             if msg != prev_msg:
+                if msg != "Beep boop...":
+                    got_info = True
                 prev_msg = msg
-                msg = f"data: {msg}\n\n"
-                yield msg
+                yield f"data: {msg}\n\n"
 
     return Response(stream(), mimetype="text/event-stream")
 
 
 @app.route("/download", methods=["GET", "POST"])
 async def json_example():
+    set_thread_name('download')
     uuid = request.args.get("uuid")
     print(uuid)
     url = request.args.get("url")
@@ -274,6 +286,7 @@ def allowed_file(filename):
 
 @app.route("/a", methods=["GET", "POST"])
 def upload_file():
+    set_thread_name('upload_file')
     if request.method == "POST":
         # check if the post request has the file part
 
@@ -290,12 +303,12 @@ def upload_file():
 
 @app.get("/update-yt-dlp")
 async def update_ytdlp():
-    def respond(msg):
-        return Response(f"data: {msg}", mimetype="text/event-stream")
+    set_thread_name('update_ytdlp')
 
     queue = []
 
     async def stuff():
+        set_thread_name('update_ytdlp/stuff')
         url = "https://api.github.com/repos/yt-dlp/yt-dlp/releases"
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
@@ -335,18 +348,59 @@ async def update_ytdlp():
         queue.append("END")
 
     def stream():
+        set_thread_name('update_ytdlp/stream')
         t = Thread(target=asyncio.run, args=(stuff(),))
         t.start()
-        while True:
+        msg = ""
+        while msg != "END":
             if len(queue) != 0:
                 msg = queue.pop(0)
-                msg = f"data: {msg}\n\n"
-                yield msg
+                yield f"data: {msg}\n\n"
 
     return Response(stream(), mimetype="text/event-stream")
 
 
+def set_thread_name(name):
+    t = threading.current_thread()
+    t.name = name
+
+
+def get_running_threads():
+    set_thread_name('get_running_threads')
+    thread_list = threading.enumerate()
+    names = []
+    for thread in thread_list:
+        names.append(f"{thread.name} - {thread.is_alive()}")
+    return names
+
+
+# Usage in your Flask program
+@app.route('/threads-event-source')
+def threads_event_source():
+
+    def stream():
+        try:
+            prev_msg = ""
+            while True:
+                names = get_running_threads()
+                msg = '<br>'.join(names)
+                # if msg != prev_msg:
+                yield f"data: {msg}\n\n"
+                prev_msg = msg
+                time.sleep(1)
+        finally:
+            print("closed thread stream")
+    return Response(stream(), mimetype="text/event-stream")
+
+
+@app.route('/view-threads')
+def view_threads():
+    return render_template('threads.html')
+
+
+
 def run():
+    set_thread_name('run')
     app.run(host="0.0.0.0", port=8080)
 
 

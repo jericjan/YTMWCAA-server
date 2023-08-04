@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Threads Checker</title>
+</head>
+<body>
+  <div id="message"></div>
+
+  <script>
+    const messageElement = document.getElementById("message");
+
+    const eventSource = new EventSource("/threads-event-source");
+
+    eventSource.onmessage = function(event) {
+      const message = event.data;
+      messageElement.innerHTML = message;
+    };
+
+    eventSource.onerror = function() {
+      console.log("EventSource connection error");
+      // Handle connection error if needed
+    };
+  </script>
+</body>
+</html>
